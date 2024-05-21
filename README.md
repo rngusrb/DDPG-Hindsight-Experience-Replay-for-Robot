@@ -52,3 +52,4 @@ It was plotted by using 5 different seeds, the solid line is the median value.
 FetchPush-v1| FetchPickAndPlace-v1| FetchSlide-v1
 -----------------------|-----------------------|-----------------------|
 ![](figures/push.gif)| ![](figures/pick.gif)| ![](figures/slide.gif)
+# ddpgher
