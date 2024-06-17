@@ -46,7 +46,7 @@ train pick and place v2
 ## 학습결과
  2000 epoch동안 학습시 success rate
 ![학습데이터](./figures/RL_successrate.png)
-![smallborder](./figures/output.mov)
-![bigborder](./figures/8m52soutput.mov)
+![smallborder](./figures/smalloutput.mp4)
+![bigborder](./figures/8m52soutput.mp4)
 
 
