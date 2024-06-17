@@ -34,13 +34,12 @@ class ddpg_agent:
             
             self.actor_network.load_state_dict(actor_state_dict)
             self.actor_target_network.load_state_dict(actor_state_dict)
-            self.critic_network.load_state_dict(critic_state_dict)
-            self.critic_target_network.load_state_dict(critic_state_dict)
-            
-            
+            # self.critic_network.load_state_dict(critic_state_dict)
+            # self.critic_target_network.load_state_dict(critic_state_dict)    
         else:
             self.actor_target_network.load_state_dict(self.actor_network.state_dict())
-            self.critic_target_network.load_state_dict(self.critic_network.state_dict())
+            
+        self.critic_target_network.load_state_dict(self.critic_network.state_dict())
             
         # cuda
         if self.args.cuda:

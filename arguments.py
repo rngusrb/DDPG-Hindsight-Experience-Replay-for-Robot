@@ -18,6 +18,7 @@ def get_args():
     parser.add_argument('--replay-strategy', type=str, default='future', help='the HER strategy')
     parser.add_argument('--clip-return', type=float, default=50, help='if clip the returns')
     parser.add_argument('--save-dir', type=str, default='saved_models/', help='the path to save the models')
+    parser.add_argument('--save-file', type=str, default='FetchPickAndPlace-v2/', help='the path to save the models')
     parser.add_argument('--noise-eps', type=float, default=0.2, help='noise eps')
     parser.add_argument('--random-eps', type=float, default=0.3, help='random eps')
     parser.add_argument('--buffer-size', type=int, default=int(1e6), help='the size of the buffer')
@@ -31,7 +32,7 @@ def get_args():
     parser.add_argument('--polyak', type=float, default=0.95, help='the average coefficient')
     parser.add_argument('--n-test-rollouts', type=int, default=10, help='the number of tests')
     parser.add_argument('--clip-range', type=float, default=5, help='the clip range')
-    parser.add_argument('--demo-length', type=int, default=20, help='the demo length')
+    parser.add_argument('--demo-length', type=int, default=40, help='the demo length')
     parser.add_argument('--cuda', action='store_true', help='if use gpu do the acceleration')
     parser.add_argument('--num-rollouts-per-mpi', type=int, default=2, help='the rollouts per mpi')
 

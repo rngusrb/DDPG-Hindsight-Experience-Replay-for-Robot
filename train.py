@@ -42,8 +42,8 @@ def launch(args):
     #pick and place에 해당하는 observation, goal, action, action_max, max_timesteps를 가져와 해당되는 env_params를 가져온다.
     env_params = get_env_params(env)
     # 환경과 상호작용하기 위한 ddpg agent를 생성한다.
- #   ddpg_trainer = ddpg_agent(args, env, env_params, load_model_path="/home/daehun/hindsight-experience-replay/saved_models/FetchPickAndPlace1000" )
-    ddpg_trainer = ddpg_agent(args, env, env_params )
+    ddpg_trainer = ddpg_agent(args, env, env_params, load_model_path="/home/daehun/hindsight-experience-replay/saved_models/submitFirst" )
+    # ddpg_trainer = ddpg_agent(args, env, env_params )
     ddpg_trainer.learn()
 
 if __name__ == '__main__':

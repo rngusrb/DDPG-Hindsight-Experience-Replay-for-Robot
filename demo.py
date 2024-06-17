@@ -17,8 +17,8 @@ def process_inputs(o, g, o_mean, o_std, g_mean, g_std, args):
 if __name__ == '__main__':
     args = get_args()
     # 저장한 모델경로를 가져온다.
-    # model_path = args.save_dir + args.env_name + '/model.pt'
-    model_path = "/home/daehun/hindsight-experience-replay/saved_models/FetchPickAndPlace7000/model.pt"
+    model_path = args.save_dir + args.save_file + '/model.pt'
+    # model_path = "/home/daehun/hindsight-experience-replay/saved_models/FetchPickAndPlace7000/model.pt"
     # 저장한 모델, 정규화 팩터 등을 가져온다.
     o_mean, o_std, g_mean, g_std, actor_model, critic_model = torch.load(model_path, map_location=lambda storage, loc: storage)
     # pick and place 환경을 생성한다. robot env에서 자동으로 terminated되는 것을 무시하기 위해

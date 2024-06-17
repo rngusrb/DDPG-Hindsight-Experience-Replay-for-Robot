@@ -445,7 +445,7 @@ class MujocoFetchEnv(get_base_fetch_env(MujocoRobotEnv)):
         if self.has_object:
             #테이블 가운데 좌표에서 0.07만큼 노이즈를 준다.
             goal = [1.3, 0.45, 0.2] + self.np_random.uniform(
-                - 0.07, 0.07, size=3
+                - 0.12, 0.12, size=3
             )
             goal += self.target_offset
             goal[2] = self.height_offset
@@ -477,29 +477,31 @@ class MujocoFetchEnv(get_base_fetch_env(MujocoRobotEnv)):
             terminated = False
             truncated = False
             if info['is_success']:
-                #현재 achived goal과 target과의 거리를 계산하여 threshold보다 작으면 reward를 1로 얻어 조건문을 실행한다.
+                #현재 achived goal과 target과의 거리를 계산하여 threshold보다 작으면 reward를 0, 크면 -1으로 얻어 조건문을 실행한다.
                 reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
-                if reward:
+                
+                # if reward:
                     #reward 1, 즉 타겟에 object를 place하는 것에 성공했을 경우 다음 오브젝트로 넘어간다.
-                    self.current_object_idx +=  1
-                    if(self.current_object_idx == self.num_objects): #모든 object를 place했을 경우
-                        terminated = True #episode 종료
-                        return obs, reward, terminated, False, info
-                    #이 에피소드에서 현재까지의 스텝을 계산하고 출력한다. 이후 episode steps를 초기화하여 다음 오브젝트를 집을 수 있도록 한다.
-                    self.total_steps += self.episode_steps
-                    print(f"Total steps: {self.total_steps}, Current object index: {self.current_object_idx}, episode steps: {self.episode_steps}")
-                    self.episode_steps = 0
+                    # print("reward조건문 수행됨", reward)
+                self.current_object_idx +=  1
+                if(self.current_object_idx == self.num_objects): #모든 object를 place했을 경우
+                    terminated = True #episode 종료
+                    return obs, reward, terminated, False, info
+                #이 에피소드에서 현재까지의 스텝을 계산하고 출력한다. 이후 episode steps를 초기화하여 다음 오브젝트를 집을 수 있도록 한다.
+                self.total_steps += self.episode_steps
+                # print(f"Total steps: {self.total_steps}, Current object index: {self.current_object_idx}, episode steps: {self.episode_steps}")
+                self.episode_steps = 0
                             
             else: #매스텝마다 -1의 reward를 받는다.
                 reward = -1
                 
                 
-            if self.episode_steps > 50: # 150스텝 이상이면 episode 종료
+            if self.episode_steps > 80: # 150스텝 이상이면 episode 종료
                 truncated = True
                 #환경 초기화
                 self.total_steps = 0
                 self.episode_steps = 0
-                print("truncated reset됨.")
+                # print("truncated reset됨.")
                 self.current_object_idx = 0
                 # self.reset()
                 
