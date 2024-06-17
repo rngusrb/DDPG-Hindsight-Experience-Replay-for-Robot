@@ -46,7 +46,15 @@ train pick and place v2
 ## 학습결과
  2000 epoch동안 학습시 success rate
 ![학습데이터](./figures/RL_successrate.png)
-![smallborder](./figures/smalloutput.mp4)
-![bigborder](./figures/8m52soutput.mp4)
+### small border
+<video width="320" height="240" controls>
+  <source src="./figures/smalloutput.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
+### big border
+<video width="320" height="240" controls>
+  <source src="./figures/8m52soutput.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
