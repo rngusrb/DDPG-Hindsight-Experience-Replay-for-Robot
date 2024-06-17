@@ -198,7 +198,8 @@ class ddpg_agent:
                        'obs_next': mb_obs_next,
                        'ag_next': mb_ag_next,
                        }
-        transitions = self.her_module.sample_her_transitions(buffer_temp, num_transitions)
+        #her을 통해 미래의 achived_goal을 현재 goal로 update하고, transition 대체, reward 재계산
+        transitions = self.her_module.sample_her_transitions(buffer_temp, num_transitions) 
         obs, g = transitions['obs'], transitions['g']
         # pre process the obs and g
         transitions['obs'], transitions['g'] = self._preproc_og(obs, g)
