@@ -201,12 +201,12 @@ class ddpg_agent:
         #her을 통해 미래의 achived_goal을 현재 goal로 update하고, transition 대체, reward 재계산
         transitions = self.her_module.sample_her_transitions(buffer_temp, num_transitions) 
         obs, g = transitions['obs'], transitions['g']
-        # pre process the obs and g
+        # observation을 clip한다.
         transitions['obs'], transitions['g'] = self._preproc_og(obs, g)
-        # update
+        #her을 통해서 transition을 대체하고 reward를 재계산한 transitions을 포함한 buffer로 normalizer를 업데이트한다.
         self.o_norm.update(transitions['obs'])
         self.g_norm.update(transitions['g'])
-        # recompute the stats
+        #통계량 업데이트
         self.o_norm.recompute_stats()
         self.g_norm.recompute_stats()
 
@@ -215,27 +215,27 @@ class ddpg_agent:
         g = np.clip(g, -self.args.clip_obs, self.args.clip_obs)
         return o, g
 
-    # soft update
+    #polyak averaging을 통해 target network를 업데이트한다.
     def _soft_update_target_network(self, target, source):
         for target_param, param in zip(target.parameters(), source.parameters()):
             target_param.data.copy_((1 - self.args.polyak) * param.data + self.args.polyak * target_param.data)
 
-    # update the network
+    #네트워크를 update한다.
     def _update_network(self):
-        # sample the episodes
+        #buffer에서 transitions을 샘플링한다.
         transitions = self.buffer.sample(self.args.batch_size)
-        # pre-process the observation and goal
+        # observation과 goal clip 전처리.
         o, o_next, g = transitions['obs'], transitions['obs_next'], transitions['g']
         transitions['obs'], transitions['g'] = self._preproc_og(o, g)
         transitions['obs_next'], transitions['g_next'] = self._preproc_og(o_next, g)
-        # start to do the update
+        #normalize한다.
         obs_norm = self.o_norm.normalize(transitions['obs'])
         g_norm = self.g_norm.normalize(transitions['g'])
         inputs_norm = np.concatenate([obs_norm, g_norm], axis=1)
         obs_next_norm = self.o_norm.normalize(transitions['obs_next'])
         g_next_norm = self.g_norm.normalize(transitions['g_next'])
         inputs_next_norm = np.concatenate([obs_next_norm, g_next_norm], axis=1)
-        # transfer them into the tensor
+        #tensor로 변환한다.
         inputs_norm_tensor = torch.tensor(inputs_norm, dtype=torch.float32)
         inputs_next_norm_tensor = torch.tensor(inputs_next_norm, dtype=torch.float32)
         actions_tensor = torch.tensor(transitions['actions'], dtype=torch.float32)
@@ -245,39 +245,53 @@ class ddpg_agent:
             inputs_next_norm_tensor = inputs_next_norm_tensor.cuda()
             actions_tensor = actions_tensor.cuda()
             r_tensor = r_tensor.cuda()
-        # calculate the target Q value function
+        # 타겟 네트워크를 활용하여 q value를 계산한다.
         with torch.no_grad():
-            # do the normalization
-            # concatenate the stuffs
+            """
+            - critic update
+            
+            critic을 업데이트하기 위해서 one step td update를 수행한다. 이때, 타겟값이 일정하게
+            고정되게 하기 위해 타겟 네트워크를 이용한다. 그래서 타겟 넷에서 Q값을 뽑고, action도 타겟넷에서
+            다음 상태를 통과시켜서 뽑은 action으로 target q value를 계산한다.
+            여기서 r은 r_tensor로 리플레이버퍼로 가져오고, input next_norm tensor로 st+1을 가져온후
+            actor target network로 action을 뽑아서 critic target network로 넣어서 target q value를 계산한다.
+            """
+            
             actions_next = self.actor_target_network(inputs_next_norm_tensor)
             q_next_value = self.critic_target_network(inputs_next_norm_tensor, actions_next)
             q_next_value = q_next_value.detach()
             target_q_value = r_tensor + self.args.gamma * q_next_value
             target_q_value = target_q_value.detach()
-            # clip the q value
+            
             clip_return = 1 / (1 - self.args.gamma)
             target_q_value = torch.clamp(target_q_value, -clip_return, 0)
-        # the q loss
+        # td update를 위해 다음 state st+1이 아닌 st로 현재 q value를 계산한다.
         real_q_value = self.critic_network(inputs_norm_tensor, actions_tensor)
+        #mse loss를 이용해 critic을 업데이트한다.
         critic_loss = (target_q_value - real_q_value).pow(2).mean()
-        # the actor loss
+        """
+        - actor update
+        트랜지션을 통해서 얻어진 샘플로 summation한 loss에 대해 critic이 예측하는 q value가 최대가 되도록 gradient ascent를 수행한다.
+        => negative q-value를 minimiaze. actor로 얻어진 actions들을 critic에 넣어서 q-value를 계산하고, 이를 최대화한다.
+        """
         actions_real = self.actor_network(inputs_norm_tensor)
         actor_loss = -self.critic_network(inputs_norm_tensor, actions_real).mean()
         actor_loss += self.args.action_l2 * (actions_real / self.env_params['action_max']).pow(2).mean()
-        # start to update the network
+        # actor network의 gradient를 구하고 update한다.
         self.actor_optim.zero_grad()
         actor_loss.backward()
         sync_grads(self.actor_network)
         self.actor_optim.step()
-        # update the critic_network
+        # critic network의 gradient를 구하고 update한다.
         self.critic_optim.zero_grad()
         critic_loss.backward()
         sync_grads(self.critic_network)
         self.critic_optim.step()
 
-    # do the evaluation
+    # agent를 evaluation하여 success rate를 구한다.
     def _eval_agent(self):
         total_success_rate = []
+        #한 에피소드에 대해서 성공률을 구한다.
         for _ in range(self.args.n_test_rollouts):
             per_success_rate = []
             observation = self.env.reset()
@@ -287,9 +301,10 @@ class ddpg_agent:
             for _ in range(self.env_params['max_timesteps']):
                 # self.env.render()
                 with torch.no_grad():
+                    #학습된 actor 네트워크를 이용해 action을 선택한다.
                     input_tensor = self._preproc_inputs(obs, g)
                     pi = self.actor_network(input_tensor)
-                    # convert the actions
+                    #action의 차원을 줄인다.
                     actions = pi.detach().cpu().numpy().squeeze()
                 # print(self.env.step(actions))
                 observation_new, _, _, _, info = self.env.step(actions)
@@ -298,6 +313,8 @@ class ddpg_agent:
                 per_success_rate.append(info['is_success'])
             total_success_rate.append(per_success_rate)
         total_success_rate = np.array(total_success_rate)
+        #마지막 time step에서의 성공률을 구한다.
         local_success_rate = np.mean(total_success_rate[:, -1])
+        #모든 프로세스의 성공률을 더해서 평균을 구한다.
         global_success_rate = MPI.COMM_WORLD.allreduce(local_success_rate, op=MPI.SUM)
         return global_success_rate / MPI.COMM_WORLD.Get_size()
