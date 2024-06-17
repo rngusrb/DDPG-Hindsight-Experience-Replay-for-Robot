@@ -28,19 +28,9 @@ class ddpg_agent:
         self.actor_target_network = actor(env_params)
         self.critic_target_network = critic(env_params)
         # 타겟 네트워크를 초기화
-        if load_model_path:
-            # print(torch.load(load_model_path + '/model.pt'))
-            o_norm_mean, o_norm_std, g_norm_mean, g_norm_std, actor_state_dict, critic_state_dict = torch.load(load_model_path + '/model.pt')
-            
-            self.actor_network.load_state_dict(actor_state_dict)
-            self.actor_target_network.load_state_dict(actor_state_dict)
-            self.critic_network.load_state_dict(critic_state_dict)
-            self.critic_target_network.load_state_dict(critic_state_dict)
-            
-            
-        else:
-            self.actor_target_network.load_state_dict(self.actor_network.state_dict())
-            self.critic_target_network.load_state_dict(self.critic_network.state_dict())
+        
+        self.actor_target_network.load_state_dict(self.actor_network.state_dict())
+        self.critic_target_network.load_state_dict(self.critic_network.state_dict())
             
         # cuda
         if self.args.cuda:
@@ -58,16 +48,12 @@ class ddpg_agent:
         # normalizer 초기화
         self.o_norm = normalizer(size=env_params['obs'], default_clip_range=self.args.clip_range)
         self.g_norm = normalizer(size=env_params['goal'], default_clip_range=self.args.clip_range)
-        if load_model_path:
-            self.o_norm.mean = o_norm_mean
-            self.o_norm.std = o_norm_std
-            self.g_norm.mean = g_norm_mean
-            self.g_norm.std = g_norm_std
+
         # 저장파일이 존재하지 않는다면 마스터 프로세스만 저장 디렉토리를 생성한다.
         if MPI.COMM_WORLD.Get_rank() == 0:
             if not os.path.exists(self.args.save_dir):
                 os.mkdir(self.args.save_dir)
-
+            # path to save the model
             self.model_path = os.path.join(self.args.save_dir, self.args.env_name)
             if not os.path.exists(self.model_path):
                 os.mkdir(self.model_path)
@@ -80,10 +66,10 @@ class ddpg_agent:
         # start to collect samples
         for epoch in range(self.args.n_epochs):
             for _ in range(self.args.n_cycles): #에포크당 샘플을 모으기 위한 에피소드 :50
-                mb_obs, mb_ag, mb_g, mb_actions = [], [], [], []#각 에피소드마다 버퍼에 mini-batch obs, achieved goal, goal, actions를 저장한다.
-                for _ in range(self.args.num_rollouts_per_mpi):#에피소드당 샘플을 모으기 위한 mpi마다의 rollout : 2 즉 미니배치 사이즈.
+                mb_obs, mb_ag, mb_g, mb_actions = [], [], [], [] #각 에피소드마다 버퍼에 mini-batch obs, achieved goal, goal, actions를 저장한다.
+                for _ in range(self.args.num_rollouts_per_mpi): #에피소드당 샘플을 모으기 위한 mpi마다의 rollout : 2
                     #미니배치에 추가할 에피소드별 obs, achieved goal, goal, actions를 저장한다.
-                    ep_obs, ep_ag, ep_g, ep_actions = [], [], [], []
+                    ep_obs, ep_ag, ep_g, ep_actions = [], [], [], [] 
                     #환경을 리셋한다.
                     observation = self.env.reset()
                     
@@ -91,106 +77,114 @@ class ddpg_agent:
                     obs = observation[0]['observation']
                     ag = observation[0]['achieved_goal']
                     g = observation[0]['desired_goal']
-                    # max_timesteps만큼 반복하면서 에피소드를 수행한다.
+                    #observation에서 object의 위치를 가져온다.
+                    objectPos = observation["observation"][3:6]
+                    #object의 상대적 위치를 가져온다.
+                    object_rel_pos = observation["observation"][6:9]
+                    object_oriented_goal = object_rel_pos.copy()
+                    #object의 상대적 위치 바로 위로 이동
+                    object_oriented_goal[2] += 0.03 
+                    #object_rel_pos = object_pos - grip_pos를 이용해 gripper의 위치를 가져오고, 이를 ag에 저장한다.
+                    grip_pos = -object_rel_pos + objectPos
+                    ag = grip_pos
+                    
+                    object_pos_goal = objectPos.copy()
+                    if grip_pos[0] > objectPos[0]:
+                        object_pos_goal[0] += 0.003
+                    else:
+                        object_pos_goal[0] -= 0.003
+
+                    if grip_pos[1] > objectPos[1]:
+                        object_pos_goal[1] += 0.002
+                    else:
+                        object_pos_goal[1] -= 0.002
+
+                    object_pos_goal[2] -= -0.031
+                    """
+                        train approach part 
+                        각 에피소드마다 approach를 수행하는데 할당된 20개의 timestep동안 
+                        actor에서 action을 받아 적용하고,
+                        이를 통해 gripper의 위치를 goal로 이동시킨다.
+
+                    """
+                    # start to collect samples
                     for t in range(self.env_params['max_timesteps']):
                         with torch.no_grad():
-                            #현재 상태 obs와 goal g를 이용해 input tensor를 만든다. 즉, obs와 goals를 같이 입력으로 넣어준다. == HER
                             input_tensor = self._preproc_inputs(obs, g)
-                            #actor 네트워크를 이용해 action을 선택한다.
                             pi = self.actor_network(input_tensor)
                             action = self._select_actions(pi)
-                        
+                        # feed the actions into the environment
                         # print("self.env.step(action):", self.env.step(action))
-                        #선택한 행동을 환경에 넣어 다음 상태를 얻는다.
                         observation_new, _, _, _, info = self.env.step(action)
-                        #새로운 상태.
                         obs_new = observation_new['observation']
                         ag_new = observation_new['achieved_goal']
-                        # 각 mpi에서 수행한 에피소드별 obs, achieved goal, goal, actions를 저장한다.
-                        ep_obs.append(obs.copy()) #현재 상태
-                        ep_ag.append(ag.copy()) #achived goal
-                        ep_g.append(g.copy()) #goal
-                        ep_actions.append(action.copy()) #action
+                        # append rollouts
+                        ep_obs.append(obs.copy())
+                        ep_ag.append(ag.copy())
+                        ep_g.append(g.copy())
+                        ep_actions.append(action.copy())
                         # re-assign the observation
                         obs = obs_new
                         ag = ag_new
                     ep_obs.append(obs.copy())
                     ep_ag.append(ag.copy())
-                    #mpi의 현재 rollout에서 수행한 에피소드를 미니배치버퍼에 추가한다.
                     mb_obs.append(ep_obs)
                     mb_ag.append(ep_ag)
                     mb_g.append(ep_g)
                     mb_actions.append(ep_actions)
-                # 저장한 에피소드들을 numpy array로 변환한다.
+                # convert them into arrays
                 mb_obs = np.array(mb_obs)
                 mb_ag = np.array(mb_ag)
                 mb_g = np.array(mb_g)
                 mb_actions = np.array(mb_actions)
-                #numpy array를 replay buffer에 저장한다.
+                # store the episodes
                 self.buffer.store_episode([mb_obs, mb_ag, mb_g, mb_actions])
-                #normalizer를 업데이트한다.
                 self._update_normalizer([mb_obs, mb_ag, mb_g, mb_actions])
                 for _ in range(self.args.n_batches):
-                    # 배치사이즈만큼 네트워크를 업데이트한다.
+                    # train the network
                     self._update_network()
-                # 안정적인 네트워크 업데이트를 위해 ddpg에서는 main network를 업데이트하다가 일정 주기마다 target network를 업데이트한다.
-                #즉, 미니배치만큼 네트워크를 업데이트하고 그 이후 어느정도 policy와 advatage의 차이가 벌어지기 전 target network를 업데이트한다.
+                # soft update
                 self._soft_update_target_network(self.actor_target_network, self.actor_network)
                 self._soft_update_target_network(self.critic_target_network, self.critic_network)
-            #agent를 evaluation하여 success rate를 구한다.
+            # start to do the evaluation
             success_rate = self._eval_agent()
-            if MPI.COMM_WORLD.Get_rank() == 0: #프로세스의 랭크가 0일때, 즉 마스터 프로세스일때
+            if MPI.COMM_WORLD.Get_rank() == 0:
                 print('[{}] epoch is: {}, eval success rate is: {:.3f}'.format(datetime.now(), epoch, success_rate))
                 torch.save([self.o_norm.mean, self.o_norm.std, self.g_norm.mean, self.g_norm.std, self.actor_network.state_dict(), self.critic_network.state_dict()], \
                             self.model_path + '/model.pt')
 
-    # 입력 전처리. her구현을 위해 obs와 goal을 같이 넣어준다.
+    # pre_process the inputs
     def _preproc_inputs(self, obs, g):
-        obs_norm = self.o_norm.normalize(obs) #ddpg에서는 obs를 normalize한다.
-        g_norm = self.g_norm.normalize(g)#ddpg에서는 goal을 normalize한다.
-        #정규화된 observation과 goal을 같이 넣어준다.
+        obs_norm = self.o_norm.normalize(obs)
+        g_norm = self.g_norm.normalize(g)
+        # concatenate the stuffs
         inputs = np.concatenate([obs_norm, g_norm])
         inputs = torch.tensor(inputs, dtype=torch.float32).unsqueeze(0)
         if self.args.cuda:
             inputs = inputs.cuda()
         return inputs
-    #네틍워크를 업데이트하기 액션을 선택한다. exploration을 위해 action에 noise를 추가한다.
     
+    # this function will choose action for the agent and do the exploration
     def _select_actions(self, pi):
         action = pi.cpu().numpy().squeeze()
-        # 가우시안 노이즈를 더해주는데, action의 최대값에서 noise_eps만큼 노이즈를 추가한다.
+        # add the gaussian
         action += self.args.noise_eps * self.env_params['action_max'] * np.random.randn(*action.shape)
-        # action을 clip한다.
         action = np.clip(action, -self.env_params['action_max'], self.env_params['action_max'])
         # random actions...
         random_actions = np.random.uniform(low=-self.env_params['action_max'], high=self.env_params['action_max'], \
                                             size=self.env_params['action'])
-        #epsilon의 확률로 랜덤 액션을 고르게 하기 위해서 베르누이 분포를 통해 랜덤 액션을 선택한다.
-        action += np.random.binomial(1, self.args.random_eps, 1)[0] * (random_actions - action) 
+        # choose if use the random actions
+        action += np.random.binomial(1, self.args.random_eps, 1)[0] * (random_actions - action)
         return action
 
-    # normalizer를 업데이트한다.
+    # update the normalizer
     def _update_normalizer(self, episode_batch):
-        #저장한 에피소드 배치에서 각각의 미니배치 observation, achived goal, goal, actions를 가져온다.
         mb_obs, mb_ag, mb_g, mb_actions = episode_batch
-        
-        
-        #모든 에피소드에 대해서, 첫번쨰 time step을 제외해서 다음 time step으로 대응시킨다.
-        mb_obs_next = mb_obs[:, 1:, :] 
+        mb_obs_next = mb_obs[:, 1:, :]
         mb_ag_next = mb_ag[:, 1:, :]
-        
-        
-        # 한 에피소드에서 일어난 timesteps의 수, 즉 한 에피소드에서의 상태전이(trainsition)의 수를 가져온다.
-        """
-        self.args.num_rollouts_per_mpi = 2: 각 MPI 프로세스가 수행하는 에피소드의 수 : 2
-    •	self.env_params['max_timesteps'] = 50: 각 에피소드의 timestep 수 : 50
-    •	self.env_params['action'] = 4: pick and place 환경의 action 차원 : 4
-        """
+        # get the number of normalization transitions
         num_transitions = mb_actions.shape[1]
-        
-        
-        
-        #buffer에 저장하기 위한 모든 정보를 담는다.
+        # create the new buffer to store them
         buffer_temp = {'obs': mb_obs, 
                        'ag': mb_ag,
                        'g': mb_g, 
