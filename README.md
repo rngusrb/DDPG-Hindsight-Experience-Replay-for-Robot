@@ -19,8 +19,8 @@
 - torch == 2.3.0
 
 
-### mujoco 환경 설정 필요 파일
-- fetch_env.py, original_fetch_env.py
+## mujoco 환경 설정 필요 파일
+### fetch_env.py, original_fetch_env.py
 train시 original_fetch_env.py
 test시(10개 object 필요시) fetch_env.py
 >  target sampling, object sampling시 필요.
@@ -33,7 +33,10 @@ repo/original_fetch_env.py의 내용을
 repo/fetch_env.py의 내용을 
 /home/username/.conda/envs/RLP/lib/python3.11/site-packages/gymnasium_robotics/envs/fetch/fetch_env.py
 에 붙여넣어야함.
-- pick_and_place.xml
+
+
+
+### pick_and_place.xml
 > 환경 초기세팅(table, objects) 
 
 repo/pick_and_place.xml의 내용을 
