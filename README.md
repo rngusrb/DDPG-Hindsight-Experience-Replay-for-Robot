@@ -20,9 +20,16 @@
 
 
 ### mujoco 환경 설정 필요 파일
-- fetch_env.py
+- fetch_env.py, original_fetch_env.py
+train시 original_fetch_env.py
+test시(10개 object 필요시) fetch_env.py
 >  target sampling, object sampling시 필요.
+- train시
+repo/original_fetch_env.py의 내용을 
+/home/username/.conda/envs/RLP/lib/python3.11/site-packages/gymnasium_robotics/envs/fetch/fetch_env.py
+에 붙여넣어야함.
 
+- test시
 repo/fetch_env.py의 내용을 
 /home/username/.conda/envs/RLP/lib/python3.11/site-packages/gymnasium_robotics/envs/fetch/fetch_env.py
 에 붙여넣어야함.
@@ -47,14 +54,12 @@ train pick and place v2
  2000 epoch동안 학습시 success rate
 ![학습데이터](./figures/RL_successrate.png)
 ### small border
-<video width="320" height="240" controls>
-  <source src="./figures/smalloutput.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![small](./figures/smalloutput.gif)
+
+
 
 ### big border
-<video width="320" height="240" controls>
-  <source src="./figures/8m52soutput.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+![big](./figures/8m52soutput.gif)
+
+
 
