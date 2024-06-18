@@ -9,8 +9,6 @@
 ### Requirements
 - python==3.11
 - Mujoco 2.3.7
-- python=3.5.2
-- openai-gym=0.12.5 
 - mpi4py == 3.1.4
 - gym == 0.26.2
 - Gymnasium == 0.29.1
