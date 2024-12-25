@@ -62,14 +62,6 @@ result2=cur.fetchall()
 ```
 
 ## 3.knn 추천 알고리즘(K=40, 피어슨 상관계수, 유저 기반)
-```
-sql = "select userid,movieId,movieTitle,ratingScore from user natural join ratings natural join movie"
-cur.execute(sql)
-rows = cur.fetchall()
-moviedata = pd.DataFrame(data=rows, columns=['userid', 'movieId', 'movieTitle', 'ratingScore'])
-moviedata2 = pd.pivot_table(moviedata, index='userid', columns='movieId', values='ratingScore', aggfunc='max')
-----moviedata2아래와 같이 인덱스는 userid, columns는 movieid인 데이터프레임 생성한다. 안의 값은 유저가 해당 movieid에 평가한 'ratingScore' 데이터
-```
  ![image](https://github.com/user-attachments/assets/8815e96b-4ec5-489d-8366-db78f0ff6b9f)
 ```
 ----다른사람과 유사도 검사를 통해 영화 추천을 받는 유저(A)를 userid로 넣는다
@@ -110,8 +102,9 @@ False]
         result = (ch1 - ch2 / (len(sm) + 0.000000001)) / ((pow(pa3, 1 / 2) + 0.000000001))
 ```
 ```
+![image](https://github.com/user-attachments/assets/ab871f1f-d4d9-49b8-b44f-2033e0777082)
 ---- 피어슨 상관 계수(아래 우측 이미지)를 좌측 같이 변형하여 계산하는 과정, 분모가 0이 되는 것을 고려하여 0.000000001추가
- ![image](https://github.com/user-attachments/assets/ab871f1f-d4d9-49b8-b44f-2033e0777082)
+
 
         sim_dict[user] = result
 ----sim_dict에 다른 유저(B)의 userid와 해당 유저와 유저(A)와의 상관 계수를 딕셔너리로 저장
