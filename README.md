@@ -101,9 +101,9 @@ False]
                     pa2 - sum(df_list) * sum(df_list) / (len(sm) + 0.000000001))
         result = (ch1 - ch2 / (len(sm) + 0.000000001)) / ((pow(pa3, 1 / 2) + 0.000000001))
 ```
-```
-![image](https://github.com/user-attachments/assets/2c4c653f-bede-42c7-8097-6fac78acd048)
+![image](https://github.com/user-attachments/assets/a97bdd6c-42c0-415a-bd92-01c99a2f2e47)
 
+```
 ---- 피어슨 상관 계수(아래 우측 이미지)를 좌측 같이 변형하여 계산하는 과정, 분모가 0이 되는 것을 고려하여 0.000000001추가
         sim_dict[user] = result
 ----sim_dict에 다른 유저(B)의 userid와 해당 유저와 유저(A)와의 상관 계수를 딕셔너리로 저장
@@ -140,24 +140,6 @@ False]
     return sorted(recommender.items(), key=operator.itemgetter(1), reverse=True)[:10]
 ---- recommender dict에서 평점 높은 10개 영화 출력
 ```
-
-## 모델 테스트
-1. 테스트하고자 하는 모델폴더 및 파일(submitFirst/model.pt)를 /repo/saved_models에 저장한다.
-2. 모델폴더를 인자(--save-file)로 파이썬 파일 실행.
-
-`python demo.py --save-file submitFirst`
-
-
-## 학습결과
- 2000 epoch동안 학습시 success rate
-![학습데이터](./figures/RL_successrate.png)
-### small border
-![small](./figures/smalloutput.gif)
-
-
-
-### big border
-![big](./figures/8m52soutput.gif)
 
 
 
