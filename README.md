@@ -102,15 +102,17 @@ False]
         result = (ch1 - ch2 / (len(sm) + 0.000000001)) / ((pow(pa3, 1 / 2) + 0.000000001))
 ```
 ```
-![image](https://github.com/user-attachments/assets/ab871f1f-d4d9-49b8-b44f-2033e0777082)
+![image](https://github.com/user-attachments/assets/2c4c653f-bede-42c7-8097-6fac78acd048)
+
 ---- 피어슨 상관 계수(아래 우측 이미지)를 좌측 같이 변형하여 계산하는 과정, 분모가 0이 되는 것을 고려하여 0.000000001추가
-
-
         sim_dict[user] = result
 ----sim_dict에 다른 유저(B)의 userid와 해당 유저와 유저(A)와의 상관 계수를 딕셔너리로 저장
     ''''''
     sim_mat = sorted(sim_dict.items(), key=operator.itemgetter(1), reverse=True)[:40]
 ----sim_mat에는 모든 다른 유저와의 상관 계수 중 k=40임으로 상위 40명을 저장
+```
+![image](https://github.com/user-attachments/assets/3b983ac6-b939-441f-9772-334537abb001)
+
 ```
 ----knn계산과정----
     recommend_list = list(set(dataframe.columns) - set(U_df.columns))
@@ -135,24 +137,9 @@ False]
         pred = use_sum / (sum(sim) + 0.0000001)
         recommender[movie] = pred
 ----아래 계산대로 유저(A)가 안 본 영화의 예상 평점을 recommender dict에 저장
- 
-
     return sorted(recommender.items(), key=operator.itemgetter(1), reverse=True)[:10]
 ---- recommender dict에서 평점 높은 10개 영화 출력
-
-
-result_list=cosim(int(num1),moviedata2)
-----맨위에서 입력 받은useid를 기반으로 추천 상위 10개 movieid를 result_list에 저장
-movielist=[] 
-for i in range(10):
-    sql7="select movieid, movietitle 
-from movie where movieid="+str(result_list[i][0])+" 
-order by movieId desc limit 1;"
-    cur.execute(sql7)
-    movie = cur.fetchall()
-    removie=movie[0]
-    movielist.append((removie[0],removie[1]))
-----추천 상위 10개 영화movieid를 통해 movietitle을 찾고 momovielist에 같이 저장
+```
 
 ## 모델 테스트
 1. 테스트하고자 하는 모델폴더 및 파일(submitFirst/model.pt)를 /repo/saved_models에 저장한다.
