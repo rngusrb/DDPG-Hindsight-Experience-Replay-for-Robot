@@ -115,16 +115,7 @@ python demo.py --save-file submitFirst
 - [Hindsight Experience Replay (Andrychowicz et al., 2017)](https://arxiv.org/abs/1707.01495)
 - [DDPG (Lillicrap et al., 2015)](https://arxiv.org/abs/1509.02971)
 
-## 학습결과
- 2000 epoch동안 학습시 success rate
-![학습데이터](./figures/RL_successrate.png)
-### small border
-![small](./figures/smalloutput.gif)
 
-
-
-### big border
-![big](./figures/8m52soutput.gif)
 
 
 
